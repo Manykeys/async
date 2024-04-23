@@ -8,19 +8,27 @@ const API = {
 
 async function run() {
     try {
-        const orgOgrns = await sendRequest(API.organizationList);
+        const orgOgrnsPromise = sendRequest(API.organizationList);
+        const orgOgrns = await orgOgrnsPromise;
         const ogrns = orgOgrns.join(",");
-        const requisites = await sendRequest(`${API.orgReqs}?ogrn=${ogrns}`);
+
+        const requisitesPromise = sendRequest(`${API.orgReqs}?ogrn=${ogrns}`);
+        const analyticsPromise = sendRequest(`${API.analytics}?ogrn=${ogrns}`);
+        const buhPromise = sendRequest(`${API.buhForms}?ogrn=${ogrns}`);
+
+        const [requisites, analytics, buh] = await Promise.all([requisitesPromise, analyticsPromise, buhPromise]);
+
         const orgsMap = reqsToMap(requisites);
-        const analytics = await sendRequest(`${API.analytics}?ogrn=${ogrns}`);  // URL был изменён в объекте API
+
         addInOrgsMap(orgsMap, analytics, "analytics");
-        const buh = await sendRequest(`${API.buhForms}?ogrn=${ogrns}`);
         addInOrgsMap(orgsMap, buh, "buhForms");
+
         render(orgsMap, orgOgrns);
     } catch (error) {
         console.error("An error occurred:", error);
     }
 }
+
 
 run();
 
@@ -29,12 +37,12 @@ function sendRequest(url) {
     return fetch(url)
         .then(response => {
             if (!response.ok) {
-                throw new Error('Network response was not ok: ' + response.statusText);
+                throw new Error(response.statusText + " " + response.status);
             }
             return response.json();
         })
         .catch(error => {
-            console.error('There has been a problem with your fetch operation:', error);
+            alert(error);
             throw error;
         });
 }
